@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header" :class="{ 'scrolled': isScrolled }">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <div class="logo-icon">GT</div>
+                        <span class="logo-text">GameTracker</span>
+                    </div>
+                    
+                    <nav class="nav" v-if="isAuthenticated">
+                        <button 
+                            v-for="item in navItems" 
+                            :key="item.id"
+                            @click="currentSection = item.id"
+                            :class="['nav-item', { active: currentSection === item.id }]"
+                        >
+                            <span class="nav-text">{{ item.name }}</span>
+                        </button>
+                    </nav>
+
+                    <div class="header-actions">
+                        <div v-if="isAuthenticated" class="user-section">
+                            <button @click="currentSection = 'profile'" class="user-btn">
+                                
+                                <div class="user-avatar">
+                                    <span v-if="currentUser?.username">{{ currentUser.username.charAt(0).toUpperCase() }}</span>
+                                </div>
+                                <span class="user-name">{{ currentUser?.username }}</span>
+                            </button>
+                            <button @click="logout" class="logout-btn" title="Выйти">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div v-else class="auth-section">
+                            <button @click="showLogin = true" class="auth-btn login-btn">Вход</button>
+                            <button @click="showRegister = true" class="auth-btn register-btn">Регистрация</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+
+        <!-- Hero Section for Guests -->
+        <section v-if="!isAuthenticated" class="hero">
+            <div class="hero-background">
+                <div class="hero-particles"></div>
+            </div>
+            <div class="container">
+                <div class="hero-content">
+                    <div class="hero-badge">ЛУЧШИЙ ТРЕКЕР ИГР</div>
+                    <h1 class="hero-title">
+                        Отслеживай свои 
+                        <span class="gradient-text">игровые</span>
+                        достижения
+                    </h1>
+                    <p class="hero-description">
+                        Пиши уникальные рецензии, собирай коллекцию игр и находи единомышленников 
+                        в самом продвинутом игровом сообществе
+                    </p>
+                    <div class="hero-actions">
+                        <button @click="showRegister = true" class="btn btn-primary btn-large">
+                            Начать бесплатно
+                        </button>
+                        <button @click="showLogin = true" class="btn btn-secondary btn-large">
+                            Уже есть аккаунт?
+                        </button>
+                    </div>
+                    <div class="hero-stats">
+                        <div class="stat">
+                            <div class="stat-number">{{ totalGames }}+</div>
+                            <div class="stat-label">Игр в коллекциях</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">{{ totalReviews }}+</div>
+                            <div class="stat-label">Рецензий написано</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">{{ users.length }}+</div>
+                            <div class="stat-label">Игроков в сообществе</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+
+        <!-- Main Content -->
+        <main class="main" :class="{ 'authenticated': isAuthenticated }">
+            <div class="container">
+                <section v-if="isAuthenticated && currentSection === 'home'" class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            Последние рецензии
+                        </h2>
+                        <p class="section-subtitle">Свежие мнения от сообщества</p>
+                    </div>
+
+                    <div v-if="loading" class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Загружаем рецензии...</p>
+                    </div>
+
+                    <div v-else class="reviews-grid modern-grid">
+                        <div 
+                            v-for="review in recentReviews" 
+                            :key="review.id" 
+                            class="review-card modern"
+                        >
+                            <!-- Header with author and rating -->
+                            <div class="review-header-modern">
+                                <div class="review-header-content">
+                                    <div class="author-section-modern">
+                                        <div class="user-avatar modern">
+                                            {{ getAuthorInitial(review.user_id) }}
+                                        </div>
+                                        <div class="author-info-modern">
+                                            <span class="author-name-modern">{{ getAuthorName(review.user_id) }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="rating-section-modern">
+                                        <div class="rating-main-modern">
+                                            <div class="rating-score-modern">
+                                                {{ review.overall_rating }}
+                                            </div>
+                                            <div class="rating-breakdown-modern">
+                                                <span class="rating-pill">{{ review.gameplay_rating }}</span>
+                                                <span class="rating-pill">{{ review.graphics_rating }}</span>
+                                                <span class="rating-pill">{{ review.story_rating }}</span>
+                                                <span class="rating-pill">{{ review.music_rating }}</span>
+                                                <span class="rating-pill">{{ review.atmosphere_rating }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="game-cover-modern">
+                                            <img 
+                                                :src="getGameCover(review.game_id)" 
+                                                :alt="review.game_name"
+                                                @error="(event) => handleImageError(event, review.game_id)"
+                                                @load="handleImageLoad"
+                                                loading="lazy"
+                                            >
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Review Content -->
+                            <div class="review-content-modern">
+                                <h4 class="review-title-modern">{{ review.title }}</h4>
+                                <p class="review-text-modern" :class="{ 'expanded': review.expanded }">
+                                    {{ review.expanded ? review.content : getPreviewText(review.content) }}
+                                </p>
+                            </div>
+
+
+                    <div class="review-footer-modern">
+                        <div class="actions-left">
+                            <button class="like-button">
+                                <svg class="heart-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                </svg>
+                                <span>{{ review.likes_count || 2 }}</span>
+                            </button>
+                            <button class="menu-button">
+                                <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="actions-right">
+                            <button class="view-button" @click="openReviewPage(review)">
+                                <svg class="icon" viewBox="0 0 15 15" fill="currentColor">
+                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M12 13C12.5523 13 13 12.5523 13 12V3C13 2.44771 12.5523 2 12 2H3C2.44771 2 2 2.44771 2 3V6.5C2 6.77614 2.22386 7 2.5 7C2.77614 7 3 6.77614 3 6.5V3H12V12H8.5C8.22386 12 8 12.2239 8 12.5C8 12.7761 8.22386 13 8.5 13H12ZM9 6.5C9 6.5001 9 6.50021 9 6.50031V6.50035V9.5C9 9.77614 8.77614 10 8.5 10C8.22386 10 8 9.77614 8 9.5V7.70711L2.85355 12.8536C2.65829 13.0488 2.34171 13.0488 2.14645 12.8536C1.95118 12.6583 1.95118 12.3417 2.14645 12.1464L7.29289 7H5.5C5.22386 7 5 6.77614 5 6.5C5 6.22386 5.22386 6 5.5 6H8.5C8.56779 6 8.63244 6.01349 8.69139 6.03794C8.74949 6.06198 8.80398 6.09744 8.85143 6.14433C8.94251 6.23434 8.9992 6.35909 8.99999 6.49708L8.99999 6.49738"/>
+                                </svg>
+                            </button>
+                            <button class="eye-button" @click="toggleReviewExpand(review)">
+                                <svg class="icon" viewBox="0 0 576 512" fill="currentColor">
+                                    <path d="M288 80c-65.2 0-118.8 29.6-159.9 67.7C89.6 183.5 63 226 49.4 256c13.6 30 40.2 72.5 78.6 108.3C169.2 402.4 222.8 432 288 432s118.8-29.6 159.9-67.7C486.4 328.5 513 286 526.6 256c-13.6-30-40.2-72.5-78.6-108.3C406.8 109.6 353.2 80 288 80zM95.4 112.6C142.5 68.8 207.2 32 288 32s145.5 36.8 192.6 80.6c46.8 43.5 78.1 95.4 93 131.1c3.3 7.9 3.3 16.7 0 24.6c-14.9 35.7-46.2 87.7-93 131.1C433.5 443.2 368.8 480 288 480s-145.5-36.8-192.6-80.6C48.6 356 17.3 304 2.5 268.3c-3.3-7.9-3.3-16.7 0-24.6C17.3 208 48.6 156 95.4 112.6zM288 336c44.2 0 80-35.8 80-80s-35.8-80-80-80c-.7 0-1.3 0-2 0c1.3 5.1 2 10.5 2 16c0 35.3-28.7 64-64 64c-5.5 0-10.9-.7-16-2c0 .7 0 1.3 0 2c0 44.2 35.8 80 80 80zm0-208a128 128 0 1 1 0 256 128 128 0 1 1 0-256z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <div v-if="!loading && recentReviews.length === 0" class="empty-state">
+                        <div class="empty-icon">📝</div>
+                        <h3>Пока нет рецензий</h3>
+                        <p>Будьте первым, кто поделится своим мнением!</p>
+                        <button @click="currentSection = 'search'" class="btn btn-primary">
+                            Написать рецензию
+                        </button>
+                    </div>
+                </section>
+
+                 <!-- Review Detail Page -->
+                 <section v-if="isAuthenticated && currentSection === 'review-detail'" class="section">
+                    <div class="game-header" v-if="currentReviewGame">
+                        <div class="game-hero">
+                            <img 
+                                :src="currentReviewGame.background_image || 'https://via.placeholder.com/1200x400/1a1b2e/6366f1?text=No+Image'" 
+                                :alt="currentReviewGame.name" 
+                                class="game-hero-image"
+                            >
+                            <div class="game-hero-overlay">
+                                <div class="container">
+                                    <div class="game-hero-content">
+                                        <h1 class="game-title-large">{{ currentReviewGame.name }}</h1>
+                                        <div class="game-meta-large">
+                                            <div class="meta-item-large">
+                                                <span class="meta-label">Дата выхода</span>
+                                                <span class="meta-value">{{ currentReviewGame.released || 'Неизвестно' }}</span>
+                                            </div>
+                                            <div class="meta-item-large">
+                                                <span class="meta-label">Рейтинг</span>
+                                                <span class="meta-value rating-large">{{ gameAverageRating }}/90</span>
+                                            </div>
+                                            <div class="meta-item-large">
+                                                <span class="meta-label">Всего рецензий</span>
+                                                <span class="meta-value">{{ gameReviews.length }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="game-genres-large">
+                                            <span 
+                                                v-for="genre in currentReviewGame.genres?.slice(0, 3)" 
+                                                :key="genre.id" 
+                                                class="genre-tag-large"
+                                            >
+                                                {{ genre.name }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="review-detail-card">
+                        <div class="review-detail-header">
+                            <div class="review-author-large">
+                                <div class="user-avatar medium">
+                                    {{ getAuthorInitial(currentReview.user_id) }}
+                                </div>
+                                <div class="author-info-large">
+                                    <span class="author-name-large">{{ getAuthorName(currentReview.user_id) }}</span>
+                                    <span class="review-date-large">{{ formatDate(currentReview.created_at) }}</span>
+                                </div>
+                            </div>
+                            <div class="review-rating-large">
+                                <div class="rating-score-large">{{ currentReview.overall_rating }}/90</div>
+                            </div>
+                        </div>
+                        
+                        <h2 class="review-title-large">{{ currentReview.title }}</h2>
+                        
+                        <div class="rating-breakdown-large">
+                            <div class="rating-category-large" v-for="category in ratingCategories" :key="category.key">
+                                <div class="category-header-large">
+                                    <span class="category-name-large">{{ category.name }}</span>
+                                    <span class="category-rating-large">{{ currentReview[category.key] }}/10</span>
+                                </div>
+                                <div class="rating-bar-large">
+                                    <div 
+                                        class="rating-progress-large" 
+                                        :class="category.key"
+                                        :style="{ width: (currentReview[category.key] * 10) + '%' }"
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="review-content-large">
+                            <p>{{ currentReview.content }}</p>
+                        </div>
+
+                        <div class="review-detail-actions">
+                            <button @click="currentSection = 'home'" class="btn btn-outline">
+                                ← Назад к рецензиям
+                            </button>
+                            <button @click="openGamePage(currentReview.game_id)" class="btn btn-primary">
+                                Смотреть все рецензии на игру
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Game Detail Page -->
+                <section v-if="isAuthenticated && currentSection === 'game-detail'" class="section">
+                    <div class="game-header" v-if="currentGame">
+                        <div class="game-hero">
+                            <img 
+                                :src="currentGame.background_image || 'https://via.placeholder.com/1200x400/1a1b2e/6366f1?text=No+Image'" 
+                                :alt="currentGame.name" 
+                                class="game-hero-image"
+                            >
+                            <div class="game-hero-overlay">
+                                <div class="container">
+                                    <div class="game-hero-content">
+                                        <h1 class="game-title-large">{{ currentGame.name }}</h1>
+                                        <div class="game-meta-large">
+                                            <div class="meta-item-large">
+                                                <span class="meta-label">Дата выхода</span>
+                                                <span class="meta-value">{{ currentGame.released || 'Неизвестно' }}</span>
+                                            </div>
+                                            <div class="meta-item-large">
+                                                <span class="meta-label">Рейтинг сообщества</span>
+                                                <span class="meta-value rating-large">{{ gameAverageRating }}/90</span>
+                                            </div>
+                                            <div class="meta-item-large">
+                                                <span class="meta-label">Всего рецензий</span>
+                                                <span class="meta-value">{{ gameReviews.length }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="game-genres-large">
+                                            <span 
+                                                v-for="genre in currentGame.genres?.slice(0, 3)" 
+                                                :key="genre.id" 
+                                                class="genre-tag-large"
+                                            >
+                                                {{ genre.name }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="game-reviews-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Рецензии на игру</h2>
+                            <p class="section-subtitle">{{ gameReviews.length }} рецензий от сообщества</p>
+                        </div>
+
+                        <div class="reviews-grid">
+                            <div 
+                                v-for="review in gameReviews" 
+                                :key="review.id" 
+                                class="review-card"
+                                @click="openReviewPage(review)"
+                            >
+                                <div class="review-card-header">
+                                    <div class="review-author">
+                                        <div class="user-avatar small">
+                                            {{ getAuthorInitial(review.user_id) }}
+                                        </div>
+                                        <div class="author-info">
+                                            <span class="author-name">{{ getAuthorName(review.user_id) }}</span>
+                                            <span class="review-date">{{ formatDate(review.created_at) }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="game-rating">
+                                        <div class="rating-score">{{ review.overall_rating }}/90</div>
+                                    </div>
+                                </div>
+                                
+                                <h4 class="review-title">{{ review.title }}</h4>
+                                
+                                <p class="review-content preview">
+                                    {{ getPreviewText(review.content) }}
+                                </p>
+
+                                <div class="rating-breakdown">
+                                    <div class="rating-category" v-for="category in ratingCategories" :key="category.key">
+                                        <div class="category-header">
+                                            <span class="category-name">{{ category.name }}</span>
+                                            <span class="category-rating">{{ review[category.key] }}/10</span>
+                                        </div>
+                                        <div class="rating-bar">
+                                            <div 
+                                                class="rating-progress" 
+                                                :class="category.key"
+                                                :style="{ width: (review[category.key] * 10) + '%' }"
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="review-actions">
+                                    <button class="btn btn-outline btn-sm">
+                                        Читать полностью →
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="gameReviews.length === 0" class="empty-state">
+                            <div class="empty-icon">📝</div>
+                            <h3>Пока нет рецензий</h3>
+                            <p>Будьте первым, кто поделится мнением об этой игре!</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Search Section -->
+                <section v-if="isAuthenticated && currentSection === 'search'" class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            Поиск игр
+                        </h2>
+                        <p class="section-subtitle">Найди свою любимую игру</p>
+                    </div>
+                    
+                    <div class="search-section">
+                        <div class="search-box">
+                            <input 
+                                v-model="searchQuery" 
+                                type="text" 
+                                placeholder="Введите название игры..."
+                                @keyup.enter="searchGames"
+                                class="search-input"
+                            >
+                            <button @click="searchGames" class="btn btn-primary search-btn">
+                                Найти
+                            </button>
+                        </div>
+
+                        <div v-if="searchLoading" class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Ищем игры...</p>
+                        </div>
+
+                        <div v-else-if="searchResults.length > 0" class="search-results">
+                            <h3 class="results-title">Найдено {{ searchResults.length }} игр</h3>
+                            <div class="games-grid">
+                                <div 
+                                    v-for="game in searchResults" 
+                                    :key="game.id" 
+                                    class="game-card"
+                                >
+                                    <div class="game-image">
+                                        <img :src="game.background_image || 'https://via.placeholder.com/300x200/1a1b2e/6366f1?text=No+Image'" :alt="game.name">
+                                    </div>
+                                    <div class="game-content">
+                                        <h3 class="game-title">{{ game.name }}</h3>
+                                        <div class="game-meta">
+                                            <div class="meta-item">
+                                                <span>{{ game.rating || 'N/A' }}/5</span>
+                                            </div>
+                                            <div class="meta-item">
+                                                <span>{{ game.released || 'Дата неизвестна' }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="game-genres">
+                                            <span v-for="genre in game.genres.slice(0, 2)" :key="genre.id" class="genre-tag">
+                                                {{ genre.name }}
+                                            </span>
+                                        </div>
+                                        <div class="game-actions">
+                                            <button @click="viewGameReviews(game.id)" class="btn btn-outline btn-sm">
+                                                Смотреть рецензии
+                                            </button>
+                                            <button @click="openReviewModal(game)" class="btn btn-primary btn-sm">
+                                                Написать рецензию
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-else-if="searched && !searchLoading" class="empty-state">
+                            <div class="empty-icon">🎯</div>
+                            <h3>Игры не найдены</h3>
+                            <p>Попробуйте изменить поисковый запрос</p>
+                        </div>
+
+                        
+                    </div> 
+                </section> 
+
+
+
+               <!-- Profile Section -->
+                <section v-if="isAuthenticated && currentSection === 'profile'" class="section">
+                    <div class="profile-header">
+                        <div class="profile-avatar-section">
+                            <div class="user-avatar xlarge">
+                                <span>{{ currentUser?.username?.charAt(0)?.toUpperCase() || 'U' }}</span>
+                            </div>
+                            <div class="profile-info">
+                                <h1 class="profile-name">{{ currentUser?.username || 'Пользователь' }}</h1>
+                                <p class="profile-email">{{ currentUser?.email || 'Email не указан' }}</p>
+                                <p class="profile-join-date">Участник с {{ formatDate(currentUser?.created_at) || 'недавно' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Статистика -->
+                    <div class="profile-stats">
+                        <div class="stats-grid">
+                            <div class="stat-card primary">
+                                <div class="stat-icon">📝</div>
+                                <div class="stat-content">
+                                    <div class="stat-number">{{ myReviews.length }}</div>
+                                    <div class="stat-label">Рецензий</div>
+                                </div>
+                            </div>
+                            <div class="stat-card success">
+                                <div class="stat-icon">🎮</div>
+                                <div class="stat-content">
+                                    <div class="stat-number">{{ userGames }}</div>
+                                    <div class="stat-label">Игр в коллекции</div>
+                                </div>
+                            </div>
+                            <div class="stat-card warning">
+                                <div class="stat-icon">✅</div>
+                                <div class="stat-content">
+                                    <div class="stat-number">{{ completedGames }}</div>
+                                    <div class="stat-label">Пройдено игр</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Мои рецензии -->
+                    <div class="profile-reviews">
+                        <div class="content-section">
+                            <h3 class="section-title">Мои последние рецензии</h3>
+                            <div v-if="myReviews.length > 0" class="reviews-list compact">
+                                <div 
+                                    v-for="review in myReviews.slice(0, 3)" 
+                                    :key="review.id" 
+                                    class="review-item compact"
+                                    @click="openReviewPage(review)"
+                                >
+                                    <div class="review-header">
+                                        <h4 class="game-title">{{ review.game_name }}</h4>
+                                        <div class="review-rating">{{ review.overall_rating }}/90</div>
+                                    </div>
+                                    <p class="review-excerpt">{{ review.content.substring(0, 120) }}...</p>
+                                    <div class="review-date">{{ formatDate(review.created_at) }}</div>
+                                </div>
+                            </div>
+                            <div v-else class="empty-state small">
+                                <div class="empty-icon">📝</div>
+                                <p>Рецензий пока нет</p>
+                                <button @click="currentSection = 'search'" class="btn btn-primary btn-sm">
+                                    Написать первую рецензию
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Auth Modals -->
+        <div v-if="showLogin" class="modal-overlay" @click="showLogin = false">
+            <div class="modal" @click.stop>
+                <div class="modal-header">
+                    <h2>Вход в аккаунт</h2>
+                    <button @click="showLogin = false" class="modal-close">×</button>
+                </div>
+                <form @submit.prevent="login" class="modal-form">
+                    <div class="form-group">
+                        <label>Имя пользователя</label>
+                        <input v-model="loginData.username" type="text" required class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input v-model="loginData.password" type="password" required class="form-input">
+                    </div>
+                    <button type="submit" :disabled="authLoading" class="btn btn-primary btn-full">
+                        {{ authLoading ? 'Вход...' : 'Войти' }}
+                    </button>
+                </form>
+                <p v-if="authError" class="error-message">{{ authError }}</p>
+                <div class="modal-footer">
+                    <p>Нет аккаунта? <button @click="showRegister = true; showLogin = false" class="link-btn">Зарегистрироваться</button></p>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showRegister" class="modal-overlay" @click="showRegister = false">
+            <div class="modal" @click.stop>
+                <div class="modal-header">
+                    <h2>Создать аккаунт</h2>
+                    <button @click="showRegister = false" class="modal-close">×</button>
+                </div>
+                <form @submit.prevent="register" class="modal-form">
+                    <div class="form-group">
+                        <label>Имя пользователя</label>
+                        <input v-model="registerData.username" type="text" required class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input v-model="registerData.email" type="email" required class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input v-model="registerData.password" type="password" required minlength="8" class="form-input">
+                    </div>
+                    <button type="submit" :disabled="authLoading" class="btn btn-primary btn-full">
+                        {{ authLoading ? 'Регистрация...' : 'Создать аккаунт' }}
+                    </button>
+                </form>
+                <p v-if="authError" class="error-message">{{ authError }}</p>
+                <div class="modal-footer">
+                    <p>Уже есть аккаунт? <button @click="showLogin = true; showRegister = false" class="link-btn">Войти</button></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Review Modal -->
+        <div v-if="showReviewModal" class="modal-overlay" @click="showReviewModal = false">
+            <div class="modal large" @click.stop>
+                <div class="modal-header">
+                    <h2>Написать рецензию на "{{ selectedGame?.name }}"</h2>
+                    <button @click="showReviewModal = false" class="modal-close">×</button>
+                </div>
+                <form @submit.prevent="submitReview" class="modal-form">
+                    <div class="form-group">
+                        <label>Заголовок рецензии</label>
+                        <input v-model="reviewData.title" type="text" required class="form-input" placeholder="Опишите ваше впечатление от игры">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Текст рецензии</label>
+                        <textarea 
+                            v-model="reviewData.content" 
+                            required 
+                            class="form-input textarea" 
+                            placeholder="Расскажите о вашем опыте игры, что понравилось, что нет..."
+                            rows="5"
+                        ></textarea>
+                    </div>
+
+                    <div class="rating-categories">
+                        <h3>Оценка игры</h3>
+                        <div class="rating-grid">
+                            <div class="rating-item" v-for="category in ratingCategories" :key="category.key">
+                                <label class="rating-label">{{ category.name }}</label>
+                                <div class="rating-slider">
+                                    <input 
+                                        type="range" 
+                                        min="1" 
+                                        max="10" 
+                                        v-model="reviewData[category.key]"
+                                        class="slider"
+                                    >
+                                    <span class="rating-value">{{ reviewData[category.key] }}/10</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" @click="showReviewModal = false" class="btn btn-outline">
+                            Отмена
+                        </button>
+                        <button type="submit" :disabled="reviewLoading" class="btn btn-primary">
+                            {{ reviewLoading ? 'Публикация...' : 'Опубликовать рецензию' }}
+                        </button>
+                    </div>
+                </form>
+                <p v-if="reviewError" class="error-message">{{ reviewError }}</p>
+            </div>
+        </div>
+
+        
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
