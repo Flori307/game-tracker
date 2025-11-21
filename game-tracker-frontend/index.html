@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Tracker - Отзывы об играх</title>
+    <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+    <div id="app">
+        <header class="header">
+            <h1>🎮 Game Tracker</h1>
+            <p>Платформа для оценки и рецензирования игр</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="reviews">Все отзывы</button>
+            <button class="tab-button" data-tab="users">Пользователи</button>
+            <button class="tab-button" data-tab="game-reviews">Отзывы по игре</button>
+        </nav>
+
+        <main class="content">
+            <!-- Вкладка всех отзывов -->
+            <div id="reviews-tab" class="tab-content active">
+                <h2>Последние отзывы</h2>
+                <div class="filters">
+                    <input type="text" id="search-game" placeholder="Поиск по названию игры...">
+                    <button onclick="loadReviews()">Поиск</button>
+                </div>
+                <div id="reviews-list" class="reviews-grid"></div>
+                <button onclick="loadMoreReviews()" id="load-more" class="load-more">Загрузить еще</button>
+            </div>
+
+            <!-- Вкладка пользователей -->
+            <div id="users-tab" class="tab-content">
+                <h2>Пользователи платформы</h2>
+                <div id="users-list" class="users-grid"></div>
+            </div>
+
+            <!-- Вкладка отзывов по игре -->
+            <div id="game-reviews-tab" class="tab-content">
+                <h2>Отзывы по конкретной игре</h2>
+                <div class="game-search">
+                    <input type="number" id="game-id" placeholder="Введите ID игры (например: 123)">
+                    <button onclick="loadGameReviews()">Найти отзывы</button>
+                </div>
+                <div id="game-reviews-list" class="reviews-grid"></div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>Game Tracker &copy; 2024</p>
+        </footer>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
